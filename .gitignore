@@ -1,0 +1,5 @@
+# ignore tf-*/.terraform directories
+
+.terraform/*
+.terraform.*
+*.tfvars
