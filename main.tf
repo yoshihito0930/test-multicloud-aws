@@ -382,6 +382,9 @@ module "elb_internal_tidb" {
     interval            = 30
   }
 
+  depends_on = [
+    module.ec2_internal_tidb
+  ]
   instances = module.ec2_internal_tidb.*.id
 }
 
