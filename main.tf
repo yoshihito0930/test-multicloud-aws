@@ -6,7 +6,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "3.3.0"
 
-  name = "vpc-${var.aws_region}-tidb-test"
+  name = "${var.name_prefix}-vpc-${var.aws_region}"
 
   cidr = var.aws_vpc_cidr
 
@@ -27,7 +27,7 @@ module "security_group_bastion" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4.0"
 
-  name        = "bastion"
+  name        = "${var.name_prefix}-bastion"
   description = "bastion(tiup) security group (allow 22 port)"
   vpc_id      = module.vpc.vpc_id
 
@@ -42,7 +42,7 @@ module "security_group_internal_tidb" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4.0"
 
-  name        = "internal-tidb"
+  name        = "${var.name_prefix}-internal-tidb"
   description = "tidb internal security group"
   vpc_id      = module.vpc.vpc_id
 
@@ -53,11 +53,11 @@ module "security_group_internal_tidb" {
     },
   ]
 
-  // allow bastion ssh
+  // allow bastion ssh and tiup ports
   ingress_with_source_security_group_id = [
     {
-      rule                     = "ssh-tcp"
-      description              = "allow ssh from bastion"
+      rule                     = "all-all"
+      description              = "allow all from bastion"
       source_security_group_id = module.security_group_bastion.security_group_id
     }
   ]
@@ -71,7 +71,7 @@ module "security_group_internal_tidb_load_balancer" {
   source  = "terraform-aws-modules/security-group/aws"
   version = "~> 4.0"
 
-  name        = "internal-tidb-load-balancer"
+  name        = "${var.name_prefix}-internal-tidb-load-balancer"
   description = "tidb internal load balancer security group"
   vpc_id      = module.vpc.vpc_id
 
@@ -98,13 +98,13 @@ module "security_group_internal_tidb_load_balancer" {
 module "key_pair_tidb_bastion" {
   source  = "terraform-aws-modules/key-pair/aws"
 
-  key_name   = "key-pair-${var.aws_region}-tidb-bastion"
+  key_name   = "${var.name_prefix}-${var.aws_region}-bastion"
   create_private_key = true
 }
 module "key_pair_tidb_internal" {
   source  = "terraform-aws-modules/key-pair/aws"
 
-  key_name   = "key-pair-${var.aws_region}-tidb-internal"
+  key_name   = "${var.name_prefix}-${var.aws_region}-internal"
   create_private_key = true
 }
 
@@ -132,7 +132,7 @@ data "aws_ami" "amazon_linux" {
 module "ec2_bastion"{
   source = "terraform-aws-modules/ec2-instance/aws"
 
-  name = "bastion"
+  name = "${var.name_prefix}-bastion"
 
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.bastion_instance_type
@@ -156,13 +156,13 @@ module "ec2_bastion"{
   key_name = module.key_pair_tidb_bastion.key_pair_name
 
   # user data : init ~ec2-user/.ssh for login to internal tidb instances
-    user_data = <<-EOF
-        #!/bin/bash
-        mkdir -p ~ec2-user/.ssh
-        echo "${module.key_pair_tidb_internal.private_key_openssh}" > ~ec2-user/.ssh/id_rsa
-        chmod 600 ~ec2-user/.ssh/id_rsa
-        chown -R ec2-user:ec2-user ~ec2-user/.ssh
-    EOF
+  user_data = <<-EOF
+    #!/bin/bash
+    mkdir -p ~ec2-user/.ssh
+    echo "${module.key_pair_tidb_internal.private_key_openssh}" > ~ec2-user/.ssh/id_rsa
+    chmod 600 ~ec2-user/.ssh/id_rsa
+    chown -R ec2-user:ec2-user ~ec2-user/.ssh
+  EOF
 }
 
 # internal tidb ec2 instances (limit var.tidb_count)
@@ -171,7 +171,7 @@ module "ec2_internal_tidb" {
   
   count = var.tidb_count
 
-  name = "internal-tidb-${count.index}"
+  name = "${var.name_prefix}-internal-tidb-${count.index}"
 
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.tidb_instance_type
@@ -198,7 +198,7 @@ module "ec2_internal_tikv" {
   
   count = var.tikv_count
 
-  name = "internal-tikv-${count.index}"
+  name = "${var.name_prefix}-internal-tikv-${count.index}"
 
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.tikv_instance_type
@@ -229,10 +229,11 @@ module "ec2_internal_tikv" {
   # user data : init tikv data disk
   user_data = <<-EOF
     #!/bin/bash
-    mkfs -t ext4 /dev/sdf
-    sudo -u ec2-user mkdir -p /data
-    echo "/dev/sdf /data ext4 defaults,nofail,noatime 0 2" >> /etc/fstab
+    mkfs -t ext4 /dev/xvdf
+    mkdir -p /data
+    echo "/dev/xvdf /data ext4 defaults,nofail,noatime,nodelalloc 0 2" >> /etc/fstab
     mount -a
+    chown -R ec2-user:ec2-user /data
   EOF
 }
 
@@ -242,7 +243,7 @@ module "ec2_internal_pd" {
   
   count = var.pd_count
 
-  name = "internal-pd-${count.index}"
+  name = "${var.name_prefix}-internal-pd-${count.index}"
 
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.pd_instance_type
@@ -272,10 +273,11 @@ module "ec2_internal_pd" {
 
   user_data = <<-EOF
     #!/bin/bash
-    mkfs -t ext4 /dev/sdf
-    sudo -u ec2-user mkdir -p /data
-    echo "/dev/sdf /data ext4 defaults,nofail,noatime 0 2" >> /etc/fstab
+    mkfs -t ext4 /dev/xvdf
+    mkdir -p /data
+    echo "/dev/xvdf /data ext4 defaults,nofail,noatime,nodelalloc 0 2" >> /etc/fstab
     mount -a
+    chown -R ec2-user:ec2-user /data
   EOF
 }
 
@@ -285,7 +287,7 @@ module "ec2_internal_ticdc" {
   
   count = var.ticdc_count
 
-  name = "internal-ticdc-${count.index}"
+  name = "${var.name_prefix}-internal-ticdc-${count.index}"
 
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.ticdc_instance_type
@@ -316,10 +318,11 @@ module "ec2_internal_ticdc" {
 
   user_data = <<-EOF
     #!/bin/bash
-    mkfs -t ext4 /dev/sdf
-    sudo -u ec2-user mkdir -p /data
-    echo "/dev/sdf /data ext4 defaults,nofail,noatime 0 2" >> /etc/fstab
+    mkfs -t ext4 /dev/xvdf
+    mkdir -p /data
+    echo "/dev/xvdf /data ext4 defaults,nofail,noatime,nodelalloc 0 2" >> /etc/fstab
     mount -a
+    chown -R ec2-user:ec2-user /data
   EOF
 }
 
@@ -329,7 +332,7 @@ module "ec2_internal_monitor" {
   
   count = 1
 
-  name = "internal-monitor-${count.index}"
+  name = "${var.name_prefix}-internal-monitor-${count.index}"
 
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.monitor_instance_type
@@ -354,7 +357,7 @@ module "ec2_internal_monitor" {
 module "elb_internal_tidb" {
   source = "terraform-aws-modules/elb/aws"
 
-  name = "internal-tidb"
+  name = "${var.name_prefix}-internal-tidb"
 
   subnets = module.vpc.private_subnets
 
@@ -380,5 +383,38 @@ module "elb_internal_tidb" {
   }
 
   instances = module.ec2_internal_tidb.*.id
+}
+
+## make tidb cluster config from template
+resource "local_file" "tidb_cluster_config" {
+  content = templatefile("${path.module}/files/tiup-topology.yaml.tpl", {
+    pd_private_ips: module.ec2_internal_pd.*.private_ip,
+    tidb_private_ips: module.ec2_internal_tidb.*.private_ip,
+    tikv_private_ips: module.ec2_internal_tikv.*.private_ip,
+    ticdc_private_ips: module.ec2_internal_ticdc.*.private_ip,
+    tiflash_private_ips: [],
+    monitor_private_ip: element(module.ec2_internal_monitor.*.private_ip, 0),
+  })
+  filename = "${path.module}/tiup-topology.yaml"
+  file_permission = "0644"
+}
+
+resource "null_resource" "bastion-inventory" {
+  depends_on = [resource.local_file.tidb_cluster_config]
+
+  # Changes to any instance of the bastion requires re-provisioning
+  triggers = resource.local_file.tidb_cluster_config
+
+  provisioner "file" {
+    source      = resource.local_file.tidb_cluster_config.filename
+    destination = "/home/ec2-user/tiup-topology.yaml"
+
+    connection {
+      type        = "ssh"
+      user        = "ec2-user"
+      private_key = "${module.key_pair_tidb_bastion.private_key_openssh}"
+      host        = element(module.ec2_bastion.*.public_ip, 0)
+    }
+  }
 }
 

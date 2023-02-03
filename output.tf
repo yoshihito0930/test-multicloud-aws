@@ -11,7 +11,7 @@ output "tikv" {
 }
 
 output "pd" {
-  value = "${join("\n", module.ec2_internal_tikv.*.private_ip)}"
+  value = "${join("\n", module.ec2_internal_pd.*.private_ip)}"
 }
 
 output "monitor" {

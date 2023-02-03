@@ -1,5 +1,12 @@
 # aws configure
 
+# name prefix
+variable "name_prefix" {
+  type        = string
+  default     = "tidb-test"
+  description = "Name prefix"
+}
+
 # aws region
 variable "aws_region" {
   type        = string
@@ -9,7 +16,7 @@ variable "aws_region" {
 
 variable "aws_azs" {
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1c", "us-east-1d"]
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
   description = "AWS Availability Zones"
 }
   
