@@ -16,7 +16,7 @@ variable "aws_region" {
 
 variable "aws_azs" {
   type        = list(string)
-  default     = ["ap-northeast-1a", "ap-northeast-1b", "ap-northeast-1c"]
+  default     = ["ap-northeast-1a", "ap-northeast-1c", "ap-northeast-1d"]
   description = "AWS Availability Zones"
 }
   
