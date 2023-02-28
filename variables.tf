@@ -10,13 +10,13 @@ variable "name_prefix" {
 # aws region
 variable "aws_region" {
   type        = string
-  default     = "us-east-1"
+  default     = "ap-northeast-1"
   description = "AWS Region"
 }
 
 variable "aws_azs" {
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  default     = ["ap-northeast-1a", "ap-northeast-1b", "ap-northeast-1c"]
   description = "AWS Availability Zones"
 }
   
@@ -43,8 +43,8 @@ variable "aws_public_subnets" {
 ## servers spec
 
 variable "tidb_instance_type" {
- type    = string
- default = "t2.medium" // prod "c4.4xlarge"
+  type    = string
+  default = "t2.medium" // prod "c4.4xlarge"
 }
 
 variable "tikv_instance_type" {
