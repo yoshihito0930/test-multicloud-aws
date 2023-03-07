@@ -34,7 +34,7 @@ chmod 600 ~/.ssh/tidb-test-bastion
 To access the bastion host, use the following command, replacing `$bastion_ip` with the actual IP:
 
 ```
-ssh -i $keyfile ec2-user@$bastion_ip
+ssh -i .ssh/tidb-test-bastion ec2-user@$bastion_ip
 
 curl --proto '=https' --tlsv1.2 -sSf https://tiup-mirrors.pingcap.com/install.sh | sh
 source /home/ec2-user/.bash_profile 
@@ -43,7 +43,7 @@ tiup --version
 tiup cluster check tiup-topology.yaml
 tiup cluster check tiup-topology.yaml --apply
 
-tiup cluster deploy <cluster-name> <version> tiup-topology.yaml
+tiup cluster deploy aws-tidb-cluster1 v6.6.0 tiup-topology.yaml
 tiup cluster start test-tidb --init
 ```
 Once connected to the bastion host, you can use the `tiup cluster` subcommand to deploy the cluster components.
